@@ -66,17 +66,57 @@
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 shadow-sm z-10">
             <div class="max-w-screen-2xl mx-auto flex justify-between items-center w-full">
+                <!-- Left: Title -->
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
                         <i class="fas fa-paw text-white text-lg"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900 tracking-tight">주오 멤버십 플랜 에디터</h1>
-                        <p class="text-xs text-gray-500 mt-0.5">최종 정리.md 문서 연동 전용 뷰어 & 에디터</p>
+                        <h1 class="text-xl font-bold text-gray-900 tracking-tight">멤버십 플랜 에디터</h1>
+                        <p class="text-xs text-gray-500 mt-0.5">내부 관리용 플랜 에디터</p>
                     </div>
                 </div>
+
+                <!-- Right: Actions & Status -->
                 <div class="flex gap-3 items-center">
+                    <div class="hidden lg:flex items-center gap-2.5 mr-3 text-xs">
+                        <div
+                            class="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold px-3 py-1.5 rounded-full cursor-help group relative shadow-sm hover:bg-blue-100 hover:shadow-md transition-all duration-300">
+                            <i class="fas fa-save text-blue-500"></i>
+                            <span>스마트 저장</span>
+                            <!-- Tooltip -->
+                            <div
+                                class="absolute top-1/2 -translate-y-1/2 right-[calc(100%+8px)] w-60 bg-gray-800 text-white text-[11px] font-normal leading-relaxed rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:-right-2 after:border-[6px] after:border-transparent after:border-l-gray-800 translate-x-2 group-hover:translate-x-0">
+                                최초 [저장] 시 파일을 한 번 지정하면 이후엔 <b class="text-blue-300">묻지 않고 (Ctrl+S) 즉시 덮어쓰기</b> 됩니다.
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center gap-1.5 bg-purple-50 border border-purple-200 text-purple-700 font-bold px-3 py-1.5 rounded-full cursor-help group relative shadow-sm hover:bg-purple-100 hover:shadow-md transition-all duration-300">
+                            <i class="fas fa-users text-purple-500"></i>
+                            <span>공유 및 협업</span>
+                            <!-- Tooltip -->
+                            <div
+                                class="absolute top-1/2 -translate-y-1/2 left-[calc(100%+8px)] w-64 bg-gray-800 text-white text-[11px] font-normal leading-relaxed rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:-left-2 after:border-[6px] after:border-transparent after:border-r-gray-800 -translate-x-2 group-hover:translate-x-0">
+                                완성된 <b class="text-purple-300">.json 설정 파일</b>을 팀원에게 공유 후 에디터에 [불러오기] 시 동일한 환경을 이어서 편집할
+                                수 있습니다.
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold px-3 py-1.5 rounded-full cursor-help group relative shadow-sm hover:bg-emerald-100 hover:shadow-md transition-all duration-300">
+                            <i class="fas fa-chart-line text-emerald-500"></i>
+                            <span>마진 분석</span>
+                            <!-- Tooltip -->
+                            <div
+                                class="absolute top-1/2 -translate-y-1/2 left-[calc(100%+8px)] w-64 bg-gray-800 text-white text-[11px] font-normal leading-relaxed rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:-left-2 after:border-[6px] after:border-transparent after:border-r-gray-800 -translate-x-2 group-hover:translate-x-0">
+                                <b class="text-emerald-300">[요약 분석]</b> 탭에서 각 등급별 수익/비용 및 공제율(세금/수수료)이 자동 계산된 최총 마진율을
+                                확인하세요.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-px h-6 bg-gray-200 hidden lg:block mr-2"></div>
+
                     <span v-if="savedStatus === 'saved'"
                         class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded hidden sm:inline-flex items-center gap-1">
                         <i class="fas fa-check-circle"></i>
@@ -88,14 +128,13 @@
                         <i class="fas fa-circle mr-1"></i> 미저장
                     </span>
 
-                    <label
-                        class="px-3 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer flex items-center shadow-sm">
+                    <button @click="importConfig"
+                        class="px-3 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors shadow-sm flex items-center">
                         <i class="fas fa-folder-open mr-1.5"></i>불러오기
-                        <input type="file" accept=".json" class="hidden" @change="importConfig">
-                    </label>
+                    </button>
                     <button @click="exportConfig"
                         class="px-3 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors shadow-sm flex items-center">
-                        <i class="fas fa-file-export mr-1.5"></i>설정파일로 만들기
+                        <i class="fas fa-file-export mr-1.5"></i>설정파일 생성
                     </button>
 
                     <button @click="saveData"
@@ -580,7 +619,24 @@
                                 <td class="px-5 py-3 text-xs font-bold text-gray-500 uppercase" colspan="2">합계 / 마진 분석
                                     (1년차 기준)
                                 </td>
-                                <td class="px-3 py-3 text-right border-x border-gray-100 bg-indigo-50/30">
+                                <td class="px-3 py-3 text-right border-x border-gray-100 bg-blue-50/30">
+                                    <div class="group relative inline-block w-full">
+                                        <div
+                                            class="text-[11px] text-gray-500 mb-0.5 font-semibold cursor-help border-b border-dashed border-gray-300 inline-block">
+                                            분석 가치 (책정가 합)</div>
+                                        <!-- tooltip box -->
+                                        <div
+                                            class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded shadow-xl p-2 z-10 text-center pointer-events-none">
+                                            고객에게 제공되는 혜택들의 전체 책정가 합산입니다.<br>(할인/무료 등 금액 외 항목 제외)
+                                        </div>
+                                    </div>
+                                    <div class="font-extrabold text-blue-600 text-sm">{{getBookPriceSum(tier)}}</div>
+                                    <div
+                                        class="text-[10px] font-bold text-blue-500 bg-blue-100/50 inline-block px-1.5 py-0.5 mt-0.5 border border-blue-200 rounded">
+                                        가입비 대비 {{getDiscountRate(tier)}} 할인
+                                    </div>
+                                </td>
+                                <td class="px-3 py-3 text-right bg-indigo-50/30 border-r border-gray-100">
                                     <div class="text-[11px] text-gray-500 mb-0.5 font-semibold">연간 멤버십 수입 (A)</div>
                                     <div class="font-extrabold text-indigo-700 text-sm">{{getAnnualRevenue(tier)}}</div>
                                 </td>
@@ -603,13 +659,22 @@
                                     </div>
                                     <div class="font-extrabold text-rose-600 text-sm">{{getActualCost(tier)}}</div>
                                 </td>
-                                <td class="px-3 py-3 text-center border-l border-gray-100 bg-white">
-                                    <div class="text-[11px] text-gray-500 mb-0.5 font-semibold">1년차 마진 (A - B)</div>
-                                    <div class="font-extrabold text-sm mb-0.5" :class="getMarginColor(tier)">
-                                        {{getTierMarginAbsolute(tier)}}
+                            </tr>
+                            <!-- Sub Row for Margin -->
+                            <tr class="bg-white border-t border-gray-100">
+                                <td colspan="3"
+                                    class="px-5 py-3 text-right text-xs text-gray-500 font-semibold border-r border-gray-100">
+                                    최종 분석 결과 (멤버십 수익 - 실지출액)
+                                </td>
+                                <td colspan="2" class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <div class="text-[11px] text-gray-500 font-semibold mt-0.5">1년차 마진 (A - B)</div>
+                                        <div class="text-[11px] font-bold px-2 py-0.5 rounded shadow-sm border"
+                                            :class="getMarginBadgeColorClass(tier)">{{getTierMargin(tier)}}</div>
+                                        <div class="font-extrabold text-base" :class="getMarginColorText(tier)">
+                                            {{getTierMarginAbsolute(tier)}}
+                                        </div>
                                     </div>
-                                    <div class="text-[10px] font-bold px-1.5 py-0.5 rounded inline-block"
-                                        :class="getMarginBadgeColor(tier)">{{getTierMargin(tier)}}</div>
                                 </td>
                             </tr>
                             <!-- Monthly price vs cost comparison row -->
@@ -723,7 +788,9 @@
                     dropTarget: { list: null, idx: null },
                     settings: {
                         deductionRate: 3.3 // 지출 공제율 (수수료, 세금 등)
-                    }
+                    },
+                    fileHandle: null,
+                    showGuide: true
                 }
             },
             mounted() {
@@ -1003,27 +1070,10 @@
                     return isNaN(n) ? null : n;
                 },
                 // --- New Deduction Logic ---
-                getDeductibleCostRaw(tier) {
-                    const all = tier.benefits || [];
-                    let total = 0;
-                    all.forEach(b => {
-                        const dbItem = this.getDBItem(b.desc);
-                        if (!dbItem) return;
-
-                        // Exclude specific item from deduction
-                        if (b.desc === '유기농 사료+패드+간식 배송') return;
-                        // Exclude any item that is a discount instead of a hard cost
-                        if (dbItem.price.includes('할인') || dbItem.actualCost.includes('할인')) return;
-
-                        const v = this.parseCost(dbItem.actualCost);
-                        if (v) total += v;
-                    });
-                    return total;
-                },
                 getDeductionRaw(tier) {
-                    const deductibleCost = this.getDeductibleCostRaw(tier);
+                    const totalCost = this.getTierCostRaw(tier);
                     const rate = this.settings?.deductionRate || 0;
-                    return Math.round(deductibleCost * (rate / 100));
+                    return Math.round(totalCost * (rate / 100));
                 },
                 getDeductionSum(tier) {
                     const d = this.getDeductionRaw(tier);
@@ -1071,13 +1121,41 @@
                     if (!rev) return '0%';
                     return ((rev - cost) / rev * 100).toFixed(1) + '%';
                 },
-                getMarginColor(tier) { return ''; }, // Not used anymore but kept to prevent template errors
-                getMarginBadgeColor(tier) {
+                getMarginColorText(tier) {
                     const cost = this.getActualCostRaw(tier);
                     const rev = this.getAnnualRevenueRaw(tier);
-                    if (!rev) return 'bg-gray-100 text-gray-500';
+                    if (!rev) return 'text-gray-400';
+                    return (rev - cost) >= 0 ? 'text-emerald-600' : 'text-red-500';
+                },
+                getMarginBadgeColorClass(tier) {
+                    const cost = this.getActualCostRaw(tier);
+                    const rev = this.getAnnualRevenueRaw(tier);
+                    if (!rev) return 'bg-gray-100 text-gray-500 border-gray-200';
                     const m = (rev - cost) / rev * 100;
-                    return m >= 40 ? 'bg-emerald-100 text-emerald-700' : m >= 20 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+                    return m >= 40 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : m >= 20 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200';
+                },
+                // --- Discount & Values ---
+                getBookPriceTotalRaw(tier) {
+                    const all = tier.benefits || [];
+                    let total = 0;
+                    all.forEach(b => {
+                        // DB에 있는 가격 혹은 덮어씌워진 가격
+                        const p = this.parseCost(b.price || (this.getDBItem(b.desc)?.price));
+                        if (p) total += p;
+                    });
+                    return total;
+                },
+                getBookPriceSum(tier) {
+                    const total = this.getBookPriceTotalRaw(tier);
+                    return total > 0 ? total.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                getDiscountRate(tier) {
+                    const bookScore = this.getBookPriceTotalRaw(tier);
+                    const annualRev = this.getAnnualRevenueRaw(tier);
+
+                    if (!bookScore || bookScore <= 0 || annualRev >= bookScore) return '0%';
+                    const rate = ((bookScore - annualRev) / bookScore) * 100;
+                    return Math.round(rate) + '%';
                 },
                 getMonthlyActualCost(tier) {
                     const monthlyCost = Math.round(this.getActualCostRaw(tier) / 12);
@@ -1095,10 +1173,36 @@
                     return (rawMonthlyRev - monthlyCost) >= 0 ? 'text-emerald-600' : 'text-red-500';
                 },
                 // ────────────────────────────────────────────────────────
-                saveData() {
+                async saveData() {
                     localStorage.setItem('juo_membership_db', JSON.stringify(this.tiers));
                     localStorage.setItem('juo_benefit_db', JSON.stringify(this.benefitDB));
                     localStorage.setItem('juo_settings_db', JSON.stringify(this.settings));
+
+                    if (window.showSaveFilePicker) {
+                        try {
+                            if (!this.fileHandle) {
+                                this.fileHandle = await window.showSaveFilePicker({
+                                    suggestedName: 'membership_config.json',
+                                    types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                                });
+                            }
+                            const data = {
+                                tiers: this.tiers,
+                                benefitDB: this.benefitDB,
+                                settings: this.settings
+                            };
+                            const writable = await this.fileHandle.createWritable();
+                            await writable.write(JSON.stringify(data, null, 2));
+                            await writable.close();
+                        } catch (err) {
+                            console.error('File auto-save failed:', err);
+                            if (err.name !== 'AbortError') {
+                                alert('설정 파일 자동 저장에 실패했습니다. (권한이 없거나 창이 닫혔을 수 있습니다.)');
+                            }
+                            return; // 에러 시 저장완료 표시하지 않음
+                        }
+                    }
+
                     this.savedStatus = 'saved';
                     const now = new Date();
                     this.lastSaved = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1110,53 +1214,101 @@
                         this.showToast = false;
                     }, 1000);
                 },
-                exportConfig() {
-                    const data = {
-                        tiers: this.tiers,
-                        benefitDB: this.benefitDB
-                    };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    const date = new Date().toISOString().split('T')[0];
-                    a.download = `membership_config_${date}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                },
-                importConfig(e) {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
+                async exportConfig() {
+                    if (window.showSaveFilePicker) {
                         try {
-                            const data = JSON.parse(event.target.result);
-                            if (data.tiers && data.benefitDB) {
-                                this.tiers = data.tiers;
-                                this.benefitDB = data.benefitDB;
-                                this.selectedIndex = 0;
-                                this.saveData(); // 로컬 스토리지에 자동 저장
-                                alert('설정 파일이 성공적으로 불러와졌습니다.');
-                            } else {
-                                alert('유효하지 않은 설정 파일입니다. 구조가 맞지 않습니다. (tiers, benefitDB 필요)');
-                            }
+                            const date = new Date().toISOString().split('T')[0];
+                            const handle = await window.showSaveFilePicker({
+                                suggestedName: `membership_config_${date}.json`,
+                                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                            });
+                            this.fileHandle = handle;
+                            const data = {
+                                tiers: this.tiers,
+                                benefitDB: this.benefitDB,
+                                settings: this.settings
+                            };
+                            const writable = await this.fileHandle.createWritable();
+                            await writable.write(JSON.stringify(data, null, 2));
+                            await writable.close();
+                            alert('새로운 설정 파일로 저장되었습니다. 앞으로 [저장] 버튼을 누르면 이 파일로 자동 덮어쓰기 됩니다.');
                         } catch (err) {
-                            alert('파일을 읽는 도중 오류가 발생했습니다: ' + err.message);
+                            if (err.name !== 'AbortError') {
+                                alert('저장 중 오류가 발생했습니다: ' + err.message);
+                            }
                         }
-                    };
-                    reader.readAsText(file);
-                    e.target.value = ''; // 같은 파일을 다시 선택할 수 있도록 input 초기화
+                    } else {
+                        const data = {
+                            tiers: this.tiers,
+                            benefitDB: this.benefitDB,
+                            settings: this.settings
+                        };
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const date = new Date().toISOString().split('T')[0];
+                        a.download = `membership_config_${date}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                },
+                applyImportedData(jsonText) {
+                    try {
+                        const data = JSON.parse(jsonText);
+                        if (data.tiers && data.benefitDB) {
+                            this.tiers = data.tiers;
+                            this.benefitDB = data.benefitDB;
+                            if (data.settings) this.settings = data.settings;
+                            this.selectedIndex = 0;
+                            // 파일 핸들이 유지된 상태이므로 저장 호출시 이 파일에 기록됨
+                            this.saveData();
+                            alert('설정 파일이 성공적으로 불러와졌습니다.');
+                        } else {
+                            alert('유효하지 않은 설정 파일입니다. 구조가 맞지 않습니다. (tiers, benefitDB 필요)');
+                        }
+                    } catch (err) {
+                        alert('파일 파싱 중 오류가 발생했습니다: ' + err.message);
+                    }
+                },
+                async importConfig() {
+                    if (window.showOpenFilePicker) {
+                        try {
+                            const [handle] = await window.showOpenFilePicker({
+                                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                            });
+                            this.fileHandle = handle;
+                            const file = await handle.getFile();
+                            const text = await file.text();
+                            this.applyImportedData(text);
+                        } catch (err) {
+                            if (err.name !== 'AbortError') {
+                                alert('파일을 읽는 도중 오류가 발생했습니다: ' + err.message);
+                            }
+                        }
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.json';
+                        input.onchange = e => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = event => this.applyImportedData(event.target.result);
+                            reader.readAsText(file);
+                        };
+                        input.click();
+                    }
                 },
                 handleKeydown(e) {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
                         e.preventDefault();
                         this.saveData();
                     }
                 }
             },
             mounted() {
-                window.addEventListener('keydown', this.handleKeydown);
+                window.addEventListener('keydown', this.handleKeydown, { passive: false });
             },
             beforeUnmount() {
                 window.removeEventListener('keydown', this.handleKeydown);
