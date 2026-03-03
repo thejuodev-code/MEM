@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주오컴퍼니 멤버십 정책 에디터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- FontAwesome & Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .active-tier {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 h-screen overflow-hidden flex flex-col relative">
+    <div id="app" v-cloak class="h-full flex flex-col relative">
+        <!-- Toast Notification (Center Overlay) -->
+        <div v-if="showToast"
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-gray-900/90 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-sm transition-all duration-300 pointer-events-none">
+            <i class="fas fa-check-circle text-emerald-400 text-xl"></i>
+            <span class="font-bold tracking-wide">성공적으로 저장되었습니다</span>
+        </div>
+
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 shadow-sm z-10">
+            <div class="max-w-screen-2xl mx-auto flex justify-between items-center w-full">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                        <i class="fas fa-paw text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900 tracking-tight">주오 멤버십 플랜 에디터</h1>
+                        <p class="text-xs text-gray-500 mt-0.5">최종 정리.md 문서 연동 전용 뷰어 & 에디터</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <span v-if="savedStatus === 'saved'"
+                        class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded hidden sm:inline-flex items-center gap-1">
+                        <i class="fas fa-check-circle"></i>
+                        <span>저장됨</span>
+                        <span v-if="lastSaved" class="text-emerald-400 font-normal">&middot; {{lastSaved}}</span>
+                    </span>
+                    <span v-else-if="savedStatus === 'unsaved'"
+                        class="text-xs text-amber-500 font-semibold bg-amber-50 px-2 py-1 rounded hidden sm:inline-flex items-center">
+                        <i class="fas fa-circle mr-1"></i> 미저장
+                    </span>
+
+                    <label
+                        class="px-3 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer flex items-center shadow-sm">
+                        <i class="fas fa-folder-open mr-1.5"></i>불러오기
+                        <input type="file" accept=".json" class="hidden" @change="importConfig">
+                    </label>
+                    <button @click="exportConfig"
+                        class="px-3 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors shadow-sm flex items-center">
+                        <i class="fas fa-file-export mr-1.5"></i>설정파일로 만들기
+                    </button>
+
+                    <button @click="saveData"
+                        class="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm flex items-center">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Bar -->
+        <div class="bg-white border-b border-gray-200 px-6 flex-shrink-0">
+            <div class="max-w-screen-2xl mx-auto flex gap-0">
+                <button @click="currentTab = 'editor'"
+                    class="px-5 py-3 text-sm font-semibold border-b-2 transition-colors"
+                    :class="currentTab === 'editor' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    <i class="fas fa-pen-nib mr-2"></i>플랜 편집
+                </button>
+                <button @click="currentTab = 'summary'"
+                    class="px-5 py-3 text-sm font-semibold border-b-2 transition-colors"
+                    :class="currentTab === 'summary' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    <i class="fas fa-chart-bar mr-2"></i>요약 분석
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Workspace (Editor Tab) -->
+        <main v-show="currentTab === 'editor'" class="flex-1 overflow-hidden flex bg-gray-50">
+            <div class="max-w-screen-2xl mx-auto w-full flex h-full p-4 gap-4">
+
+                <!-- Sidebar: Tier List -->
+                <div class="w-48 flex flex-col h-full flex-shrink-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                            <i class="fas fa-layer-group mr-2"></i>운영 등급 목록
+                        </h2>
+                        <button @click="addNewTier"
+                            class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded font-medium transition">
+                            + 추가
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-2 pb-8 pr-1">
+                        <div v-for="(tier, index) in tiers" :key="index" @click="selectTier(index)"
+                            :class="['p-3 rounded-xl cursor-pointer border bg-white transition-all', selectedIndex === index ? 'active-tier ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm']">
+                            <div class="flex justify-between items-start">
+                                <div class="min-w-0 flex-1">
+                                    <span
+                                        :class="['text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide mb-1 inline-block', tier.type === '\ub2e4\uc774\ub809\ud2b8' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700']">
+                                        {{tier.type}}
+                                    </span>
+                                    <h3 class="font-bold text-gray-900 text-xs truncate">{{tier.name}}</h3>
+                                    <p class="text-[11px] text-gray-400 mt-0.5">{{tier.price}}</p>
+                                </div>
+                                <button v-if="tiers.length > 1" @click.stop="deleteTier(index)"
+                                    class="text-gray-300 hover:text-red-500 transition ml-1 flex-shrink-0">
+                                    <i class="fas fa-times text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center: Benefit Database -->
+                <div
+                    class="flex-1 h-full flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-gray-50">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-sm font-bold text-indigo-500 uppercase tracking-wider flex items-center">
+                                <i class="fas fa-database mr-2"></i>혜택 데이터베이스
+                            </h2>
+                            <button @click="addNewDBItem"
+                                class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-bold transition">
+                                + 새 혜택
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Compact grouped list -->
+                    <div class="flex-1 overflow-y-auto bg-white">
+                        <template v-for="cat in categories.filter(c => c !== '전체')" :key="cat">
+                            <template v-if="benefitDB.filter(b => b.category === cat).length > 0">
+                                <!-- Category group header -->
+                                <div class="sticky top-0 z-10 px-4 py-2.5 flex items-center gap-3 border-b"
+                                    :class="getCategoryHeaderColor(cat)">
+                                    <span class="w-3 h-3 rounded-full flex-shrink-0 shadow-sm"
+                                        :class="getCategoryDotColor(cat)"></span>
+                                    <span class="text-[12px] font-extrabold uppercase tracking-widest">{{cat}}</span>
+                                    <span
+                                        class="text-[10px] opacity-50 font-semibold bg-white/60 px-1.5 py-0.5 rounded-full">
+                                        {{benefitDB.filter(b => b.category === cat).length}}
+                                    </span>
+                                    <button @click.stop="addDBItem(cat)"
+                                        class="ml-auto flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition"
+                                        :class="getCategoryAddBtnColor(cat)" title="이 카테고리에 새 항목 추가">
+                                        <i class="fas fa-plus text-[9px]"></i> 추가
+                                    </button>
+                                </div>
+
+                                <!-- Items in this category -->
+                                <div v-for="(item, idx) in benefitDB.filter(b => b.category === cat)" :key="idx"
+                                    class="border-b border-gray-100 last:border-b-0">
+
+                                    <!-- Collapsed row -->
+                                    <div @click="toggleExpand(item)" draggable="true"
+                                        @dragstart.stop="onDBDragStart($event, item)" @dragend="onDragEnd"
+                                        class="flex items-stretch cursor-grab transition-all group border-b border-gray-50 overflow-hidden"
+                                        :class="[
+                                            expandedItem === item ? 'bg-indigo-50/50' : '',
+                                            currentTier && (currentTier.benefits.some(b => b.desc === item.desc) || (currentTier.transferBenefits && currentTier.transferBenefits.some(b => b.desc === item.desc)))
+                                                ? 'bg-indigo-50/80 shadow-inner'
+                                                : 'hover:bg-gray-50',
+                                            dragState.source === 'db' && dragState.item === item ? 'opacity-30' : ''
+                                        ]">
+                                        <!-- 카테고리 컬러 바 -->
+                                        <div class="w-1 flex-shrink-0" :class="getCategoryBarColor(item.category)">
+                                        </div>
+
+                                        <div class="flex items-center gap-2 flex-1 px-3 py-2.5">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[13px] truncate leading-tight" :class="currentTier && (currentTier.benefits.some(b => b.desc === item.desc) || (currentTier.transferBenefits && currentTier.transferBenefits.some(b => b.desc === item.desc)))
+                                                    ? 'font-bold text-indigo-700'
+                                                    : 'font-medium text-gray-700'">
+                                                    {{item.desc || '내용 없음'}}</p>
+                                            </div>
+                                            <!-- 추가됨 뱃지 -->
+                                            <span
+                                                v-if="currentTier && (currentTier.benefits.some(b => b.desc === item.desc) || (currentTier.transferBenefits && currentTier.transferBenefits.some(b => b.desc === item.desc)))"
+                                                class="flex-shrink-0 text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                                <i class="fas fa-check text-[8px]"></i>추가됨
+                                            </span>
+                                            <!-- 원가(페이백) 미입력 경고 뱃지 -->
+                                            <span v-if="!item.actualCost || item.actualCost.trim() === ''"
+                                                class="flex-shrink-0 text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                                                title="페이백/지출 금액이 입력되지 않아 마진 분석에서 제외됩니다">
+                                                <i class="fas fa-exclamation-triangle text-[8px]"></i>원가 누락
+                                            </span>
+                                            <span v-else-if="item.price"
+                                                class="text-[11px] text-gray-400 font-medium px-1 flex-shrink-0">{{item.price}}</span>
+                                            <button
+                                                v-if="currentTier && (currentTier.benefits.some(b => b.desc === item.desc) || (currentTier.transferBenefits && currentTier.transferBenefits.some(b => b.desc === item.desc)))"
+                                                @click.stop="removeBenefitByDesc(item.desc); removeTransferByDesc(item.desc)"
+                                                class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-500 hover:text-white text-red-400 transition"
+                                                title="제외">
+                                                <i class="fas fa-minus text-[10px]"></i>
+                                            </button>
+                                            <button v-else @click.stop="addBenefitFromDB(item)"
+                                                class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-indigo-600 hover:text-white text-gray-400 transition"
+                                                title="혜택에 추가">
+                                                <i class="fas fa-plus text-[10px]"></i>
+                                            </button>
+                                            <i class="fas text-gray-300 text-[10px] flex-shrink-0"
+                                                :class="expandedItem === item ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                        </div>
+
+                                        <!-- Expanded edit form -->
+                                        <div v-if="expandedItem === item" @click.stop
+                                            class="px-4 pb-4 pt-1 bg-indigo-50/60 border-t border-indigo-100">
+                                            <div class="flex flex-col gap-2">
+                                                <textarea v-model="item.desc" rows="2"
+                                                    class="w-full text-[13px] text-gray-800 bg-white border border-gray-200 focus:border-indigo-300 rounded-lg px-3 py-2 outline-none resize-none transition"
+                                                    placeholder="혜택 내용..."></textarea>
+                                                <div class="flex gap-2">
+                                                    <div class="flex-1">
+                                                        <p
+                                                            class="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-1">
+                                                            책정가 (고객 표시)</p>
+                                                        <input type="text" v-model="item.price"
+                                                            @blur="autoFormatPrice(item, 'price')"
+                                                            class="w-full text-xs text-indigo-600 font-bold bg-white border border-indigo-200 focus:border-indigo-400 rounded-lg px-3 py-2 outline-none transition"
+                                                            placeholder="ex: 300,000원 또는 10% 할인">
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <p
+                                                            class="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-1">
+                                                            페이백/지출 금액</p>
+                                                        <input type="text" v-model="item.actualCost"
+                                                            @blur="autoFormatPrice(item, 'actualCost')"
+                                                            class="w-full text-xs text-rose-600 font-bold bg-rose-50 border border-rose-200 focus:border-rose-400 rounded-lg px-3 py-2 outline-none transition"
+                                                            placeholder="ex: 180,000원">
+                                                    </div>
+                                                    <div class="flex-shrink-0">
+                                                        <p
+                                                            class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">
+                                                            카테고리</p>
+                                                        <select v-model="item.category"
+                                                            class="text-xs bg-white border border-gray-200 rounded-lg px-2 py-2 outline-none focus:border-indigo-300 text-gray-600 h-[34px]">
+                                                            <option v-for="c in categories.filter(x => x !== '전체')"
+                                                                :key="c" :value="c">{{c}}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="flex justify-between items-center pt-1">
+                                                    <button @click="deleteDBItem(item)"
+                                                        class="text-xs text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50 transition">
+                                                        <i class="fas fa-trash-alt mr-1"></i>삭제
+                                                    </button>
+                                                    <button @click="addBenefitFromDB(item); expandedItem = null"
+                                                        class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg transition flex items-center">
+                                                        등급에 추가 <i class="fas fa-arrow-left ml-1.5"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                            </template>
+                        </template>
+
+                        <div v-if="benefitDB.length === 0" class="text-center py-12 text-gray-400 text-sm">
+                            등록된 혜택 항목이 없습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Editor Form -->
+                <div
+                    class="w-[420px] flex flex-col h-full flex-shrink-0 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-pen-nib text-blue-500 mr-2"></i> 정책 수정 상세
+                        </h2>
+                    </div>
+
+                    <div class="p-6 flex-1 overflow-y-auto" v-if="currentTier">
+                        <div class="space-y-5">
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">등급명</label>
+                                <input type="text" v-model="currentTier.name"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">서브타이틀
+                                    (요약/특징)</label>
+                                <input type="text" v-model="currentTier.subtitle"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">가입
+                                        채널</label>
+                                    <select v-model="currentTier.type"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                        <option value="다이렉트">본사 다이렉트</option>
+                                        <option value="제휴">오프라인 제휴처</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">표기
+                                        금액 (1개월)</label>
+                                    <input type="text" v-model="currentTier.price"
+                                        @blur="autoFormatPrice(currentTier, 'price')"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder-gray-400"
+                                        placeholder="ex: 50,000원">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">약정 및
+                                    납부 방식</label>
+                                <input type="text" v-model="currentTier.period"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-orange-600 bg-orange-50 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition">
+                            </div>
+
+
+                            <div class="pt-6 border-t border-gray-100">
+                                <div class="flex justify-between items-center mb-3">
+                                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide">상세 제공
+                                        혜택 구성</label>
+                                </div>
+
+                                <!-- 1년 후 전환혜택 (항상 표시) -->
+                                <div class="mb-3 rounded-xl border border-purple-200 overflow-hidden"
+                                    @dragover.prevent="onDragOverList($event, 'transfer', currentTier.transferBenefits ? currentTier.transferBenefits.length : 0)"
+                                    @drop.prevent="onDropToList('transfer', currentTier.transferBenefits ? currentTier.transferBenefits.length : 0)"
+                                    @dragleave.self="onDragLeaveList">
+                                    <div class="px-3 py-1.5 bg-purple-50 flex items-center gap-2">
+                                        <i class="fas fa-clock-rotate-left text-purple-400 text-xs"></i>
+                                        <span class="text-[11px] font-bold text-purple-600 uppercase tracking-widest">1년
+                                            후 전환 혜택</span>
+                                        <span v-if="dragState.source && dropTarget.list === 'transfer'"
+                                            class="ml-auto text-[10px] text-purple-500 animate-pulse">↓ 여기에 놓기</span>
+                                    </div>
+                                    <div v-if="!currentTier.transferBenefits || currentTier.transferBenefits.length === 0"
+                                        class="px-4 py-3 text-[12px] text-center border-t border-purple-100 transition-colors"
+                                        :class="dropTarget.list === 'transfer' ? 'bg-purple-100 text-purple-500 font-bold' : 'bg-purple-50/30 text-purple-300'">
+                                        📌 드래그하거나 ↑ 버튼으로 전환혜택 지정
+                                    </div>
+                                    <div v-for="(benefit, idx) in currentTier.transferBenefits" :key="'t-'+idx"
+                                        draggable="true" @dragstart="onBenefitDragStart($event, 'transfer', idx)"
+                                        @dragend="onDragEnd" @dragover.prevent="onDragOverList($event, 'transfer', idx)"
+                                        @drop.prevent.stop="onDropToList('transfer', idx)"
+                                        class="flex gap-2 items-center px-3 py-2 border-t cursor-grab transition-all"
+                                        :class="[
+                                            dropTarget.list === 'transfer' && dropTarget.idx === idx ? 'border-t-2 border-t-purple-500 bg-purple-100' : 'border-purple-100 bg-purple-50/40',
+                                            dragState.source === 'transfer' && dragState.fromIndex === idx ? 'opacity-30' : ''
+                                        ]">
+                                        <i class="fas fa-grip-vertical text-purple-200 text-[10px] flex-shrink-0"></i>
+                                        <div class="flex-1 text-sm">
+                                            <div class="font-medium text-[13px] text-purple-700">{{benefit.desc}}</div>
+                                            <div class="mt-0.5 text-[11px] text-purple-400 font-bold"
+                                                v-if="benefit.price">{{formatPrice(benefit.price)}}</div>
+                                        </div>
+                                        <button @click="moveBenefitDown(idx)"
+                                            class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-purple-100 hover:bg-indigo-500 hover:text-white text-purple-400 transition"
+                                            title="일반혜택으로 이동">
+                                            <i class="fas fa-arrow-down text-[10px]"></i>
+                                        </button>
+                                        <button @click="removeTransferByIndex(idx)"
+                                            class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition">
+                                            <i class="fas fa-times text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 일반 혜택 목록 -->
+                                <div class="space-y-1">
+                                    <div v-for="(benefit, idx) in currentTier.benefits" :key="idx" draggable="true"
+                                        @dragstart="onBenefitDragStart($event, 'benefits', idx)" @dragend="onDragEnd"
+                                        @dragover.prevent="onDragOverList($event, 'benefits', idx)"
+                                        @drop.prevent.stop="onDropToList('benefits', idx)"
+                                        class="flex items-stretch group relative rounded-xl border cursor-grab transition-all overflow-hidden"
+                                        :class="[
+                                            dropTarget.list === 'benefits' && dropTarget.idx === idx ? 'border-t-4 border-t-indigo-500 border-indigo-200 bg-indigo-50' : 'bg-white border-gray-200',
+                                            dragState.source === 'benefits' && dragState.fromIndex === idx ? 'opacity-30' : ''
+                                        ]">
+                                        <div class="w-2 flex-shrink-0" :class="getCategoryBarColor(benefit.category)">
+                                        </div>
+                                        <div class="flex gap-2 items-start flex-1 p-3">
+                                            <i
+                                                class="fas fa-grip-vertical text-gray-300 text-[10px] mt-1.5 flex-shrink-0"></i>
+                                            <div
+                                                class="text-gray-400 text-xs w-4 flex-shrink-0 text-center font-bold mt-1.5">
+                                                {{idx+1}}</div>
+                                            <div class="flex-1 text-sm text-gray-800 leading-snug break-keep">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="px-2.5 py-0.5 text-[11px] font-extrabold rounded"
+                                                        :class="getCategoryColor(benefit.category)">{{benefit.category
+                                                        || '기타'}}</span>
+                                                </div>
+                                                <div class="font-semibold text-[13px] text-gray-800">{{benefit.desc}}
+                                                </div>
+                                                <div class="mt-1 text-[11px] font-bold bg-indigo-50 text-indigo-600 inline-block px-2 py-0.5 rounded"
+                                                    v-if="benefit.price">{{formatPrice(benefit.price)}}</div>
+                                            </div>
+                                            <div class="flex flex-col gap-1">
+                                                <button @click="moveBenefitUp(idx)"
+                                                    class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-purple-500 hover:text-white text-gray-400 transition"
+                                                    title="1년 후 전환혜택으로 이동">
+                                                    <i class="fas fa-arrow-up text-[10px]"></i>
+                                                </button>
+                                                <button @click="removeBenefit(idx)"
+                                                    class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-500 hover:text-white text-gray-300 transition">
+                                                    <i class="fas fa-times text-[10px]"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="currentTier.benefits.length === 0 && !dragState.source"
+                                        class="text-center py-8 rounded-xl border border-dashed bg-gray-50 text-gray-400 text-sm">
+                                        📌 DB에서 드래그하거나 + 버튼으로 항목 추가
+                                    </div>
+                                    <div v-if="dragState.source"
+                                        @dragover.prevent="onDragOverList($event, 'benefits', currentTier.benefits.length)"
+                                        @drop.prevent="onDropToList('benefits', currentTier.benefits.length)"
+                                        @dragleave="onDragLeaveList"
+                                        class="mt-1 rounded-xl border-2 border-dashed flex items-center justify-center py-5 text-sm font-bold transition-all cursor-copy"
+                                        :class="dropTarget.list === 'benefits' && dropTarget.idx === currentTier.benefits.length
+                                            ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
+                                            : 'border-gray-200 bg-gray-50/50 text-gray-300'">
+                                        <i class="fas fa-arrow-down mr-2"></i> 일반 혜택에 놓기
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+        </main>
+
+        <!-- Summary Analysis Tab -->
+        <div v-show="currentTab === 'summary'" class="flex-1 overflow-y-auto bg-gray-50 p-6">
+            <div class="max-w-screen-xl mx-auto space-y-6">
+                <!-- Global Deduction Settings -->
+                <div
+                    class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">등급별 혜택 요약 분석 및 수수료 설정</h2>
+                        <p class="text-xs text-gray-400 mt-1">페이백(지출) 미입력 항목은 마진 계산에서 제외됩니다.</p>
+                    </div>
+                    <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-gray-600 uppercase" title="지출시 공제할 수수료 및 세금">지출 공제율
+                                (%)</label>
+                            <input type="number" v-model="settings.deductionRate"
+                                class="w-16 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Per-tier cards -->
+                <div v-for="(tier, ti) in tiers" :key="ti"
+                    class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+
+                    <!-- Tier header -->
+                    <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-4">
+                        <div>
+                            <span class="text-base font-bold text-gray-800">{{tier.name}}</span>
+                            <span class="ml-2 text-xs text-gray-400">{{tier.subtitle}}</span>
+                        </div>
+                        <div class="flex gap-4 text-sm ml-auto flex-wrap">
+                            <span class="text-gray-500">가입채널: <strong
+                                    class="text-gray-700">{{tier.type}}</strong></span>
+                            <span class="text-gray-500">납부: <strong
+                                    class="text-gray-700">{{tier.period}}</strong></span>
+                            <span class="text-indigo-600 font-bold">월 {{tier.price}}</span>
+                        </div>
+                    </div>
+
+                    <!-- Benefits table -->
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr
+                                class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
+                                <th class="text-left px-5 py-2 font-semibold w-2/5">혜택 항목</th>
+                                <th class="text-left px-3 py-2 font-semibold">카테고리</th>
+                                <th class="text-right px-3 py-2 font-semibold">책정가</th>
+                                <th class="text-right px-3 py-2 font-semibold text-rose-500">페이백(지출)</th>
+                                <th class="text-center px-3 py-2 font-semibold">구분</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- regular benefits -->
+                            <tr v-for="(b, bi) in tier.benefits" :key="'b'+bi"
+                                class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                <td class="px-5 py-2.5 text-gray-800 font-medium">{{b.desc}}</td>
+                                <td class="px-3 py-2.5">
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-md"
+                                        :class="getCategoryColor(b.category)">{{b.category || '기타'}}</span>
+                                </td>
+                                <td class="px-3 py-2.5 text-right text-indigo-600 font-bold">{{b.price || '-'}}</td>
+                                <td class="px-3 py-2.5 text-right text-rose-500 font-bold">
+                                    {{getDBItem(b.desc) && getDBItem(b.desc).actualCost ? getDBItem(b.desc).actualCost :
+                                    '-'}}
+                                </td>
+                                <td class="px-3 py-2.5 text-center">
+                                    <span
+                                        class="text-[11px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full">일반</span>
+                                </td>
+                            </tr>
+                            <!-- transfer benefits -->
+                            <tr v-for="(b, bi) in (tier.transferBenefits || [])" :key="'t'+bi"
+                                class="border-b border-purple-50 bg-purple-50/30 hover:bg-purple-50 transition-colors">
+                                <td class="px-5 py-2.5 text-purple-700 font-medium">{{b.desc}}</td>
+                                <td class="px-3 py-2.5">
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-md"
+                                        :class="getCategoryColor(b.category)">{{b.category || '기타'}}</span>
+                                </td>
+                                <td class="px-3 py-2.5 text-right text-indigo-600 font-bold">{{b.price || '-'}}</td>
+                                <td class="px-3 py-2.5 text-right text-rose-500 font-bold">
+                                    {{getDBItem(b.desc) && getDBItem(b.desc).actualCost ? getDBItem(b.desc).actualCost :
+                                    '-'}}
+                                </td>
+                                <td class="px-3 py-2.5 text-center">
+                                    <span
+                                        class="text-[11px] bg-purple-100 text-purple-600 font-bold px-2 py-0.5 rounded-full">전환</span>
+                                </td>
+                            </tr>
+                            <!-- empty -->
+                            <tr
+                                v-if="!tier.benefits.length && !(tier.transferBenefits && tier.transferBenefits.length)">
+                                <td colspan="5" class="px-5 py-4 text-center text-gray-400 text-sm">혜택 없음</td>
+                            </tr>
+                        </tbody>
+                        <!-- Summary footer -->
+                        <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                            <tr>
+                                <td class="px-5 py-3 text-xs font-bold text-gray-500 uppercase" colspan="2">합계 / 마진 분석
+                                    (1년차 기준)
+                                </td>
+                                <td class="px-3 py-3 text-right border-x border-gray-100 bg-indigo-50/30">
+                                    <div class="text-[11px] text-gray-500 mb-0.5 font-semibold">연간 멤버십 수입 (A)</div>
+                                    <div class="font-extrabold text-indigo-700 text-sm">{{getAnnualRevenue(tier)}}</div>
+                                </td>
+                                <td class="px-3 py-3 text-right bg-rose-50/30">
+                                    <!-- Tooltip for cost deduction breakdown -->
+                                    <div class="group relative inline-block w-full">
+                                        <div
+                                            class="text-[11px] text-gray-500 mb-0.5 font-semibold cursor-help border-b border-dashed border-gray-300 inline-block">
+                                            연간 실지출액 (B)</div>
+                                        <!-- tooltip box -->
+                                        <div
+                                            class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded shadow-xl p-2 z-10 text-left">
+                                            <div class="flex justify-between mb-1">
+                                                <span>책정 지출합:</span><span>{{getTierCostSum(tier)}}</span>
+                                            </div>
+                                            <div class="flex justify-between text-emerald-300 font-bold">
+                                                <span>공제({{settings.deductionRate}}%):</span><span>-{{getDeductionSum(tier)}}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="font-extrabold text-rose-600 text-sm">{{getActualCost(tier)}}</div>
+                                </td>
+                                <td class="px-3 py-3 text-center border-l border-gray-100 bg-white">
+                                    <div class="text-[11px] text-gray-500 mb-0.5 font-semibold">1년차 마진 (A - B)</div>
+                                    <div class="font-extrabold text-sm mb-0.5" :class="getMarginColor(tier)">
+                                        {{getTierMarginAbsolute(tier)}}
+                                    </div>
+                                    <div class="text-[10px] font-bold px-1.5 py-0.5 rounded inline-block"
+                                        :class="getMarginBadgeColor(tier)">{{getTierMargin(tier)}}</div>
+                                </td>
+                            </tr>
+                            <!-- Monthly price vs cost comparison row -->
+                            <tr class="border-t border-gray-100">
+                                <td colspan="2" class="px-5 py-2 text-xs text-gray-400">
+                                    월 기준 손익 (월 멤버십 수입 - 월평균 실지출액)
+                                </td>
+                                <td
+                                    class="px-3 py-2 text-right text-xs font-bold text-indigo-500 bg-indigo-50/10 border-x border-gray-100">
+                                    {{tier.price ||
+                                    '0원'}}
+                                </td>
+                                <td class="px-3 py-2 text-right text-xs font-bold text-rose-400 bg-rose-50/10">
+                                    {{getMonthlyActualCost(tier)}}</td>
+                                <td class="px-3 py-2 text-center border-l border-gray-100">
+                                    <span class="text-xs font-bold"
+                                        :class="getMonthlyProfitColor(tier)">{{getMonthlyProfit(tier)}}</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <p v-if="!tiers.length" class="text-center text-gray-400 py-10">등록된 멤버십 등급이 없습니다.</p>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        const initialData = [
+            {
+                name: "새 멤버십",
+                subtitle: "설명을 입력하세요",
+                type: "다이렉트",
+                price: "0원",
+                period: "1년 의무",
+                benefits: [],
+                transferBenefits: []
+            }
+        ];
+
+        const defaultBenefitDB = [
+            { category: "기초 의료", desc: "필수 예방접종 (강아지 5회 / 고양이 6회)", price: "300,000원", actualCost: "" },
+            { category: "기초 의료", desc: "항체가 검사", price: "55,000원", actualCost: "" },
+            { category: "기초 의료", desc: "중성화 수술 (5kg 미만)", price: "550,000원", actualCost: "" },
+            { category: "기초 의료", desc: "동물등록 내장형칩", price: "100,000원", actualCost: "" },
+            { category: "지속 건강 관리", desc: "심장사상충 (12회)", price: "300,000원", actualCost: "" },
+            { category: "지속 건강 관리", desc: "종합백신 + 광견병 (기초 의료 종료 후)", price: "100,000원", actualCost: "" },
+            { category: "지속 건강 관리", desc: "기초 건강 검진", price: "250,000원", actualCost: "" },
+            { category: "지속 건강 관리", desc: "종합 건강검진 (초음파/X-ray)", price: "700,000원", actualCost: "" },
+            { category: "지속 건강 관리", desc: "질병/상해 의료비 지원", price: "500,000원", actualCost: "" },
+            { category: "사료/용품", desc: "유기농 사료+패드+간식 배송", price: "720,000원", actualCost: "" },
+            { category: "사료/용품", desc: "입양용품 풀세트", price: "150,000원", actualCost: "" },
+            { category: "사료/용품", desc: "주오몰 추가 할인 (20%)", price: "할인", actualCost: "" },
+            { category: "사료/용품", desc: "주오몰 최고 등급 (30% + 무료배송)", price: "할인", actualCost: "" },
+            { category: "추가 혜택", desc: "가르쳐 주오 (방문 훈련 1회)", price: "350,000원", actualCost: "" },
+            { category: "추가 혜택", desc: "기초 교육 지원", price: "100,000원", actualCost: "" },
+            { category: "추가 혜택", desc: "위생+목욕 6회 / 호텔링 3회", price: "450,000원", actualCost: "" }
+        ];
+
+        const CATEGORIES = ["전체", "기초 의료", "지속 건강 관리", "사료/용품", "추가 혜택", "기타"];
+
+        const app = Vue.createApp({
+            data() {
+                const savedData = localStorage.getItem('juo_membership_db');
+
+                // Load benefitDB: use saved edits as-is, fall back to defaults only on first run
+                const savedBenefitRaw = localStorage.getItem('juo_benefit_db');
+                let parsedBenefits;
+                if (savedBenefitRaw) {
+                    try {
+                        parsedBenefits = JSON.parse(savedBenefitRaw);
+                    } catch (e) {
+                        parsedBenefits = JSON.parse(JSON.stringify(defaultBenefitDB));
+                    }
+                } else {
+                    parsedBenefits = JSON.parse(JSON.stringify(defaultBenefitDB));
+                }
+
+                // Migrate tiers if saved, otherwise use initialData
+                let parsedTiers = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(initialData));
+                parsedTiers = parsedTiers.map(tier => {
+                    if (tier.benefits && Array.isArray(tier.benefits)) {
+                        tier.benefits = tier.benefits.map(b => {
+                            if (typeof b === 'string') {
+                                return { category: '기타', desc: b, price: '' };
+                            }
+                            return { ...b, category: b.category || '기타', desc: b.desc || '' };
+                        });
+                    }
+                    // Migrate old tiers that don't have transferBenefits
+                    if (!tier.transferBenefits) tier.transferBenefits = [];
+                    return tier;
+                });
+
+                return {
+                    categories: CATEGORIES,
+                    selectedCategory: "전체",
+                    tiers: parsedTiers,
+                    benefitDB: parsedBenefits,
+                    selectedIndex: 0,
+                    expandedItem: null,
+                    showToast: false,
+                    savedStatus: 'saved',
+                    lastSaved: null,
+                    currentTab: 'editor',
+                    dragState: { source: null, item: null, fromIndex: null },
+                    dropTarget: { list: null, idx: null },
+                    settings: {
+                        deductionRate: 3.3 // 지출 공제율 (수수료, 세금 등)
+                    }
+                }
+            },
+            mounted() {
+                const svd = localStorage.getItem('juo_settings_db');
+                if (svd) {
+                    try {
+                        const parsed = JSON.parse(svd);
+                        if (parsed.deductionRate !== undefined) {
+                            this.settings = parsed;
+                        } else {
+                            this.settings = { deductionRate: (parsed.paymentFeeRate || 0) + (parsed.taxRate || 0) };
+                        }
+                    } catch (e) { }
+                }
+                window.addEventListener('keydown', this.handleKeydown);
+            },
+            watch: {
+                tiers: {
+                    handler() { this.savedStatus = 'unsaved'; },
+                    deep: true
+                },
+                benefitDB: {
+                    handler() { this.savedStatus = 'unsaved'; },
+                    deep: true
+                },
+                settings: {
+                    handler() { this.savedStatus = 'unsaved'; },
+                    deep: true
+                }
+            },
+            computed: {
+                currentTier() {
+                    return this.tiers[this.selectedIndex] || null;
+                },
+                filteredBenefitDB() {
+                    if (this.selectedCategory === '전체') return this.benefitDB;
+                    return this.benefitDB.filter(b => b.category === this.selectedCategory);
+                }
+            },
+            methods: {
+                // ── Drag & Drop ────────────────────────────────────────
+                onDBDragStart(e, item) {
+                    this.dragState = { source: 'db', item, fromIndex: null };
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('text/plain', item.desc);
+                },
+                onBenefitDragStart(e, listName, idx) {
+                    const list = listName === 'benefits' ? this.currentTier.benefits : this.currentTier.transferBenefits;
+                    this.dragState = { source: listName, item: list[idx], fromIndex: idx };
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', list[idx].desc);
+                },
+                onDragOverList(e, listName, idx) {
+                    e.preventDefault();
+                    this.dropTarget = { list: listName, idx };
+                },
+                onDragLeaveList() {
+                    this.dropTarget = { list: null, idx: null };
+                },
+                onDropToList(targetList, targetIdx) {
+                    const { source, item, fromIndex } = this.dragState;
+                    if (!source || !item) return;
+
+                    const destArr = targetList === 'benefits' ? this.currentTier.benefits : (this.currentTier.transferBenefits || (this.currentTier.transferBenefits = []));
+
+                    if (source === 'db') {
+                        // DB → benefits or transfer: add if not already present
+                        if (!destArr.some(b => b.desc === item.desc)) {
+                            const newItem = { category: item.category, desc: item.desc, price: item.price };
+                            if (targetIdx >= destArr.length) {
+                                destArr.push(newItem);
+                            } else {
+                                destArr.splice(targetIdx, 0, newItem);
+                            }
+                        }
+                    } else {
+                        // benefits ↔ transfer or reorder within same list
+                        const srcArr = source === 'benefits' ? this.currentTier.benefits : (this.currentTier.transferBenefits || []);
+                        const [moved] = srcArr.splice(fromIndex, 1);
+
+                        if (source === targetList) {
+                            // Reorder within same list
+                            let insertAt = targetIdx > fromIndex ? targetIdx - 1 : targetIdx;
+                            if (insertAt < 0) insertAt = 0;
+                            destArr.splice(insertAt, 0, moved);
+                        } else {
+                            // Move to different list
+                            if (targetIdx >= destArr.length) {
+                                destArr.push(moved);
+                            } else {
+                                destArr.splice(targetIdx, 0, moved);
+                            }
+                        }
+                    }
+                    this.dragState = { source: null, item: null, fromIndex: null };
+                    this.dropTarget = { list: null, idx: null };
+                },
+                onDragEnd() {
+                    this.dragState = { source: null, item: null, fromIndex: null };
+                    this.dropTarget = { list: null, idx: null };
+                },
+                // ────────────────────────────────────────────────────────
+                formatPrice(price) {
+                    if (!price) return '';
+                    // 금액(원)이 명시된 경우만 "상당" 붙임, 나머지(할인/무료/% 등)는 그대로
+                    return price.includes('원') ? price + ' 상당' : price;
+                },
+                autoFormatPrice(obj, key) {
+                    const raw = (obj[key] || '').trim();
+                    if (!raw) return;
+                    const digitsOnly = raw.replace(/,/g, '');
+                    if (/^\d+$/.test(digitsOnly)) {
+                        obj[key] = parseInt(digitsOnly, 10).toLocaleString('ko-KR') + '원';
+                    }
+                    // 숫자 이외 포함(할인, %, 무료 등)은 그대로 유지
+                },
+                getCategoryColor(cat) {
+                    switch (cat) {
+                        case '기초 의료': return 'bg-red-100 text-red-700';
+                        case '지속 건강 관리': return 'bg-orange-100 text-orange-700';
+                        case '사료/용품': return 'bg-green-100 text-green-700';
+                        case '추가 혜택': return 'bg-blue-100 text-blue-700';
+                        case '전환 혜택': return 'bg-purple-100 text-purple-700';
+                        default: return 'bg-gray-100 text-gray-700';
+                    }
+                },
+                getCategoryHeaderColor(cat) {
+                    switch (cat) {
+                        case '기초 의료': return 'bg-red-50 text-red-700 border-b border-red-100';
+                        case '지속 건강 관리': return 'bg-orange-50 text-orange-700 border-b border-orange-100';
+                        case '사료/용품': return 'bg-green-50 text-green-700 border-b border-green-100';
+                        case '추가 혜택': return 'bg-blue-50 text-blue-700 border-b border-blue-100';
+                        case '전환 혜택': return 'bg-purple-50 text-purple-700 border-b border-purple-100';
+                        default: return 'bg-gray-50 text-gray-500 border-b border-gray-100';
+                    }
+                },
+                getCategoryDotColor(cat) {
+                    switch (cat) {
+                        case '기초 의료': return 'bg-red-400';
+                        case '지속 건강 관리': return 'bg-orange-400';
+                        case '사료/용품': return 'bg-green-400';
+                        case '추가 혜택': return 'bg-blue-400';
+                        case '전환 혜택': return 'bg-purple-400';
+                        default: return 'bg-gray-400';
+                    }
+                },
+                getCategoryBarColor(cat) {
+                    switch (cat) {
+                        case '기초 의료': return 'bg-red-400';
+                        case '지속 건강 관리': return 'bg-orange-400';
+                        case '사료/용품': return 'bg-green-400';
+                        case '추가 혜택': return 'bg-blue-400';
+                        case '전환 혜택': return 'bg-purple-400';
+                        default: return 'bg-gray-300';
+                    }
+                },
+                toggleExpand(item) {
+                    this.expandedItem = this.expandedItem === item ? null : item;
+                },
+                addDBItem(cat) {
+                    const newItem = { category: cat, desc: '', price: '', actualCost: '' };
+                    this.benefitDB.push(newItem);
+                    this.$nextTick(() => { this.expandedItem = newItem; });
+                    this.savedStatus = 'unsaved';
+                },
+                getCategoryAddBtnColor(cat) {
+                    switch (cat) {
+                        case '기초 의료': return 'bg-red-100 text-red-600 hover:bg-red-200';
+                        case '지속 건강 관리': return 'bg-orange-100 text-orange-600 hover:bg-orange-200';
+                        case '사료/용품': return 'bg-green-100 text-green-600 hover:bg-green-200';
+                        case '추가 혜택': return 'bg-blue-100 text-blue-600 hover:bg-blue-200';
+                        case '전환 혜택': return 'bg-purple-100 text-purple-600 hover:bg-purple-200';
+                        default: return 'bg-gray-100 text-gray-600 hover:bg-gray-200';
+                    }
+                },
+                selectTier(index) {
+                    this.selectedIndex = index;
+                },
+                addNewTier() {
+                    this.tiers.push({
+                        name: "새 멤버십",
+                        subtitle: "설명을 입력하세요",
+                        type: "다이렉트",
+                        price: "0원",
+                        period: "1년 의무",
+                        benefits: [],
+                        transferBenefits: []
+                    });
+                    this.selectedIndex = this.tiers.length - 1;
+                },
+                deleteTier(index) {
+                    if (confirm("이 멤버십을 삭제하시겠습니까?")) {
+                        this.tiers.splice(index, 1);
+                        if (this.selectedIndex >= this.tiers.length) {
+                            this.selectedIndex = Math.max(0, this.tiers.length - 1);
+                        }
+                    }
+                },
+                addNewDBItem() {
+                    const cat = this.selectedCategory === '전체' ? '기타' : this.selectedCategory;
+                    this.benefitDB.unshift({ category: cat, desc: "새로운 혜택 내용", price: "0원", actualCost: "" });
+                },
+                deleteDBItem(item) {
+                    if (confirm("마스터 DB에서 삭제하시겠습니까?\\n(이미 등급에 추가된 항목은 그대로 유지됩니다.)")) {
+                        const idx = this.benefitDB.findIndex(b => b === item);
+                        if (idx !== -1) {
+                            this.benefitDB.splice(idx, 1);
+                        }
+                    }
+                },
+                addBenefitFromDB(item) {
+                    if (this.currentTier && item.desc.trim() !== '') {
+                        // DB 항목의 복사본을 등급의 benefits 배열에 푸시
+                        this.currentTier.benefits.push({ category: item.category, desc: item.desc, price: item.price });
+                    }
+                },
+                removeBenefit(index) {
+                    if (this.currentTier) {
+                        this.currentTier.benefits.splice(index, 1);
+                    }
+                },
+                removeBenefitByDesc(desc) {
+                    if (this.currentTier) {
+                        const idx = this.currentTier.benefits.findIndex(b => b.desc === desc);
+                        if (idx !== -1) this.currentTier.benefits.splice(idx, 1);
+                    }
+                },
+                addTransferFromDB(item) {
+                    if (this.currentTier && item.desc.trim() !== '') {
+                        if (!this.currentTier.transferBenefits) this.currentTier.transferBenefits = [];
+                        if (!this.currentTier.transferBenefits.some(b => b.desc === item.desc)) {
+                            this.currentTier.transferBenefits.push({ category: item.category, desc: item.desc, price: item.price });
+                        }
+                    }
+                },
+                removeTransferByDesc(desc) {
+                    if (this.currentTier && this.currentTier.transferBenefits) {
+                        const idx = this.currentTier.transferBenefits.findIndex(b => b.desc === desc);
+                        if (idx !== -1) this.currentTier.transferBenefits.splice(idx, 1);
+                    }
+                },
+                removeTransferByIndex(idx) {
+                    if (this.currentTier && this.currentTier.transferBenefits) {
+                        this.currentTier.transferBenefits.splice(idx, 1);
+                    }
+                },
+                moveBenefitUp(idx) {
+                    // 일반혜택 → 전환혜택으로 이동
+                    if (!this.currentTier) return;
+                    if (!this.currentTier.transferBenefits) this.currentTier.transferBenefits = [];
+                    const [item] = this.currentTier.benefits.splice(idx, 1);
+                    this.currentTier.transferBenefits.push(item);
+                },
+                moveBenefitDown(idx) {
+                    // 전환혜택 → 일반혜택으로 이동
+                    if (!this.currentTier || !this.currentTier.transferBenefits) return;
+                    const [item] = this.currentTier.transferBenefits.splice(idx, 1);
+                    this.currentTier.benefits.push(item);
+                },
+                resetData() {
+                    if (confirm('모든 변경사항이 초기화됩니다. 계속하시겠습니까?')) {
+                        this.tiers = JSON.parse(JSON.stringify(initialData));
+                        this.benefitDB = JSON.parse(JSON.stringify(defaultBenefitDB));
+                        this.selectedIndex = 0;
+                        localStorage.removeItem('juo_membership_db');
+                        localStorage.removeItem('juo_benefit_db');
+                        this.savedStatus = 'saved';
+                    }
+                },
+                // ── Summary Analysis Helpers ──────────────────────────
+                getDBItem(desc) {
+                    return this.benefitDB.find(b => b.desc === desc) || null;
+                },
+                parseCost(str) {
+                    if (!str) return null;
+                    const n = parseInt(str.replace(/[^0-9]/g, ''), 10);
+                    return isNaN(n) ? null : n;
+                },
+                // --- New Deduction Logic ---
+                getDeductibleCostRaw(tier) {
+                    const all = tier.benefits || [];
+                    let total = 0;
+                    all.forEach(b => {
+                        const dbItem = this.getDBItem(b.desc);
+                        if (!dbItem) return;
+
+                        // Exclude specific item from deduction
+                        if (b.desc === '유기농 사료+패드+간식 배송') return;
+                        // Exclude any item that is a discount instead of a hard cost
+                        if (dbItem.price.includes('할인') || dbItem.actualCost.includes('할인')) return;
+
+                        const v = this.parseCost(dbItem.actualCost);
+                        if (v) total += v;
+                    });
+                    return total;
+                },
+                getDeductionRaw(tier) {
+                    const deductibleCost = this.getDeductibleCostRaw(tier);
+                    const rate = this.settings?.deductionRate || 0;
+                    return Math.round(deductibleCost * (rate / 100));
+                },
+                getDeductionSum(tier) {
+                    const d = this.getDeductionRaw(tier);
+                    return d > 0 ? d.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                getActualCostRaw(tier) {
+                    return this.getTierCostRaw(tier) - this.getDeductionRaw(tier);
+                },
+                getActualCost(tier) {
+                    const ac = this.getActualCostRaw(tier);
+                    return ac > 0 ? ac.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                getAnnualRevenueRaw(tier) {
+                    const mp = this.parseCost(tier.price) || 0;
+                    return mp * 12;
+                },
+                getAnnualRevenue(tier) {
+                    const rev = this.getAnnualRevenueRaw(tier);
+                    return rev > 0 ? rev.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                getTierCostRaw(tier) {
+                    const all = tier.benefits || [];
+                    let total = 0;
+                    all.forEach(b => {
+                        const dbItem = this.getDBItem(b.desc);
+                        if (dbItem) { const v = this.parseCost(dbItem.actualCost); if (v) total += v; }
+                    });
+                    return total;
+                },
+                getTierCostSum(tier) {
+                    const cost = this.getTierCostRaw(tier);
+                    return cost > 0 ? cost.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                // --- Margin Logic ---
+                getTierMarginAbsolute(tier) {
+                    const cost = this.getActualCostRaw(tier);
+                    const rev = this.getAnnualRevenueRaw(tier);
+                    if (!rev) return '0원';
+                    const diff = rev - cost;
+                    return (diff > 0 ? '+' : '') + diff.toLocaleString('ko-KR') + '원';
+                },
+                getTierMargin(tier) {
+                    const cost = this.getActualCostRaw(tier);
+                    const rev = this.getAnnualRevenueRaw(tier);
+                    if (!rev) return '0%';
+                    return ((rev - cost) / rev * 100).toFixed(1) + '%';
+                },
+                getMarginColor(tier) { return ''; }, // Not used anymore but kept to prevent template errors
+                getMarginBadgeColor(tier) {
+                    const cost = this.getActualCostRaw(tier);
+                    const rev = this.getAnnualRevenueRaw(tier);
+                    if (!rev) return 'bg-gray-100 text-gray-500';
+                    const m = (rev - cost) / rev * 100;
+                    return m >= 40 ? 'bg-emerald-100 text-emerald-700' : m >= 20 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+                },
+                getMonthlyActualCost(tier) {
+                    const monthlyCost = Math.round(this.getActualCostRaw(tier) / 12);
+                    return monthlyCost > 0 ? monthlyCost.toLocaleString('ko-KR') + '원' : '0원';
+                },
+                getMonthlyProfit(tier) {
+                    const rawMonthlyRev = Math.round(this.getAnnualRevenueRaw(tier) / 12);
+                    const monthlyCost = Math.round(this.getActualCostRaw(tier) / 12);
+                    const profit = rawMonthlyRev - monthlyCost;
+                    return (profit >= 0 ? '+' : '') + profit.toLocaleString('ko-KR') + '원';
+                },
+                getMonthlyProfitColor(tier) {
+                    const rawMonthlyRev = Math.round(this.getAnnualRevenueRaw(tier) / 12);
+                    const monthlyCost = Math.round(this.getActualCostRaw(tier) / 12);
+                    return (rawMonthlyRev - monthlyCost) >= 0 ? 'text-emerald-600' : 'text-red-500';
+                },
+                // ────────────────────────────────────────────────────────
+                saveData() {
+                    localStorage.setItem('juo_membership_db', JSON.stringify(this.tiers));
+                    localStorage.setItem('juo_benefit_db', JSON.stringify(this.benefitDB));
+                    localStorage.setItem('juo_settings_db', JSON.stringify(this.settings));
+                    this.savedStatus = 'saved';
+                    const now = new Date();
+                    this.lastSaved = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                    // Show centered toast for 1 second
+                    this.showToast = true;
+                    if (this.toastTimer) clearTimeout(this.toastTimer);
+                    this.toastTimer = setTimeout(() => {
+                        this.showToast = false;
+                    }, 1000);
+                },
+                exportConfig() {
+                    const data = {
+                        tiers: this.tiers,
+                        benefitDB: this.benefitDB
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const date = new Date().toISOString().split('T')[0];
+                    a.download = `membership_config_${date}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+                importConfig(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (data.tiers && data.benefitDB) {
+                                this.tiers = data.tiers;
+                                this.benefitDB = data.benefitDB;
+                                this.selectedIndex = 0;
+                                this.saveData(); // 로컬 스토리지에 자동 저장
+                                alert('설정 파일이 성공적으로 불러와졌습니다.');
+                            } else {
+                                alert('유효하지 않은 설정 파일입니다. 구조가 맞지 않습니다. (tiers, benefitDB 필요)');
+                            }
+                        } catch (err) {
+                            alert('파일을 읽는 도중 오류가 발생했습니다: ' + err.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = ''; // 같은 파일을 다시 선택할 수 있도록 input 초기화
+                },
+                handleKeydown(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        this.saveData();
+                    }
+                }
+            },
+            mounted() {
+                window.addEventListener('keydown', this.handleKeydown);
+            },
+            beforeUnmount() {
+                window.removeEventListener('keydown', this.handleKeydown);
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+
+</html>
